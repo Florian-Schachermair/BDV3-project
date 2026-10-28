@@ -32,20 +32,22 @@ The "failure" column tracks hard drive failures, a 0 indicates the hard drive ha
 The data comes from the data centers operated by Backblaze, so there are also several columns containing information about where the drives are installed, though these are not really relevant to this project.
 
 Lastly, there are various columns recording [S.M.A.R.T.](https://en.wikipedia.org/wiki/Self-Monitoring,_Analysis_and_Reporting_Technology) attributes, which represent various operational properties of the drive.
+
 For example:
 - smart_9 Power-On Hours
 - smart_12 Power Cycle Count
 - smart_194 Temperature
 
 The chosen examples are fairly self-explanatory, but there are also more complex attributes.
-Different manufacturers may also have different ways of recording a specific value; for example, the "Read Error Rate" (smart_1) is a vendor-specific value.
+Different manufacturers may also have different ways of recording a specific value. For example, the "Read Error Rate" (smart_1) is a vendor-specific value.
+
 
 ### Research questions
 
-Which vendor has the highest or lowest failure rate?
+Which vendor has the highest/lowest failure rate?
 
 Does drive size correlate with failure rate?
 
 What is the median age for drive failure?
 
-(ML) Can we predict drive failure based on SMART attributes? (Needs refinement.)
+(ML) Can we predict drive failure based on SMART attributes?
