@@ -1,0 +1,76 @@
+# Big Data exercise environment
+#   hadoop : HDFS (NameNode + DataNode) and YARN (ResourceManager + NodeManager) for MapReduce
+#   hive   : HiveServer2 with Tez (local mode) and a built-in metastore (Hive 4.1 = Java 17)
+#   spark  : JupyterLab with PySpark, pandas, numpy
+# First start (online, pulls the images):  docker compose up -d     Afterwards everything works offline.
+# "docker compose stop/start" keeps your HDFS data and Hive tables, "docker compose down" deletes them.
+
+services:
+  hadoop:
+    image: apache/hadoop:3.5.0
+    hostname: hadoop
+    user: root                                     # full permissions in the shell (docker compose exec hadoop bash)
+    working_dir: /data                             # the shell starts in the shared data folder
+    environment:
+      HDFS_NAMENODE_USER: root                     # Hadoop only runs its daemons as root if told so
+      HDFS_DATANODE_USER: root
+      YARN_RESOURCEMANAGER_USER: root
+      YARN_NODEMANAGER_USER: root
+      ENSURE_NAMENODE_DIR: /tmp/hadoop-root/dfs/name       # formats HDFS on the first start
+      # the image turns the following into Hadoop's *-site.xml files
+      CORE-SITE.XML_fs.defaultFS: hdfs://hadoop:9000
+      HDFS-SITE.XML_dfs.replication: "1"
+      HDFS-SITE.XML_dfs.permissions.enabled: "false"
+      MAPRED-SITE.XML_mapreduce.framework.name: yarn
+      MAPRED-SITE.XML_yarn.app.mapreduce.am.env: HADOOP_MAPRED_HOME=/opt/hadoop
+      MAPRED-SITE.XML_mapreduce.map.env: HADOOP_MAPRED_HOME=/opt/hadoop
+      MAPRED-SITE.XML_mapreduce.reduce.env: HADOOP_MAPRED_HOME=/opt/hadoop
+      MAPRED-SITE.XML_yarn.app.mapreduce.am.resource.mb: "512"
+      YARN-SITE.XML_yarn.nodemanager.aux-services: mapreduce_shuffle
+      YARN-SITE.XML_yarn.nodemanager.vmem-check-enabled: "false"
+    command:
+      - bash
+      - -c
+      - |
+        rm -f /tmp/*.pid                     # stale process ids after a restart
+        hdfs --daemon start namenode
+        hdfs --daemon start datanode
+        yarn --daemon start resourcemanager
+        exec yarn nodemanager
+    ports:
+      - "127.0.0.1:9870:9870"    # HDFS NameNode UI
+      - "127.0.0.1:8088:8088"    # YARN ResourceManager UI
+    volumes:
+      - ./data:/data             # the data folder next to this file
+
+  hive:
+    image: apache/hive:4.1.0
+    environment:
+      SERVICE_NAME: hiveserver2
+      HADOOP_CONF_DIR: /opt/hive/conf
+      SERVICE_OPTS: -Dhive.metastore.warehouse.dir=/user/hive/warehouse
+    configs:
+      - source: hive-core-site
+        target: /opt/hive/conf/core-site.xml
+    ports:
+      - "127.0.0.1:10000:10000"  # HiveServer2 (beeline / JDBC)
+      - "127.0.0.1:10002:10002"  # HiveServer2 UI
+    volumes:
+      - ./data:/data
+    depends_on: [hadoop]
+
+  spark:
+    image: quay.io/jupyter/pyspark-notebook:spark-4.2.0
+    command: start-notebook.py --IdentityProvider.token=''   # no login token (port is local only)
+    ports:
+      - "127.0.0.1:8888:8888"    # JupyterLab
+      - "127.0.0.1:4040:4040"    # Spark UI of the running application
+    volumes:
+      - ./data:/home/jovyan/work # the data folder appears as "work" in JupyterLab
+
+configs:
+  hive-core-site:                # Hive finds HDFS here
+    content: |
+      <configuration>
+        <property><name>fs.defaultFS</name><value>hdfs://hadoop:9000</value></property>
+      </configuration>
