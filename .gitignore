@@ -1,1 +1,3 @@
-data/
+BigData_DockerEnv/data/.ipynb_checkpoints/
+BigData_DockerEnv/data/parquet/
+BigData_DockerEnv/data/data_Q2_2026/
